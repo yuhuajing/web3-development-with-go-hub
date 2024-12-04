@@ -1,4 +1,4 @@
-package milestone4
+package sign
 
 import (
 	"crypto/sha256"
@@ -8,7 +8,6 @@ import (
 )
 
 func Sha256EncodeNumber(number int64) {
-	//fmt.Println(fmt.Sprintf("0x%x", number))
 	s := hexutil.EncodeBig(big.NewInt(number))
 	prefix := ""
 	num := 64 - len(s[2:])

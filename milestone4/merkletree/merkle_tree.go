@@ -1,4 +1,4 @@
-package milestone4
+package merkletree
 
 import (
 	"fmt"
@@ -18,26 +18,21 @@ func getKeccak(encodedata []byte) [32]byte {
 func MerkleOnlyOneArgOZ() {
 	leaf1 := []interface{}{
 		smt.SolAddress("0x0000000000000000000000000000000000000000"),
-		//smt.SolNumber("5000000000000000000"),
 	}
 
 	leaf2 := []interface{}{
 		smt.SolAddress("0x0000000000000000000000000000000000000000"),
-		//smt.SolNumber("2500000000000000000"),
 	}
 
 	leaf3 := []interface{}{
 		smt.SolAddress("0x0000000000000000000000000000000000000000"),
-		//smt.SolNumber("5000000000000000000"),
 	}
 
 	leaf4 := []interface{}{
 		smt.SolAddress("0x0000000000000000000000000000000000000000"),
-		//smt.SolNumber("2500000000000000000"),
 	}
 	leaf5 := []interface{}{
 		smt.SolAddress("0x0000000000000000000000000000000000000000"),
-		//smt.SolNumber("2500000000000000000"),
 	}
 
 	leaves := [][]interface{}{

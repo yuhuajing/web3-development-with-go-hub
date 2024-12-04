@@ -1,4 +1,4 @@
-package milestone4
+package sign
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"main/config"
+	"main/milestone4"
 
 	"strings"
 )
@@ -17,15 +18,15 @@ func WalletSigRequest() {
 	message := "ae696770-09ac-4526-8b3d-c859c003d173"
 	prikey := config.Env("PRIVATE_KEY", "")
 	ecdsaPrivateKey, _ := crypto.HexToECDSA(prikey)
-	hash := accounts.TextHash(UnsafeBytes(message))
+	hash := accounts.TextHash(milestone4.UnsafeBytes(message))
 	signatureBytes, err := crypto.Sign(hash, ecdsaPrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
 	signatureBytes[64] += 27
 
-	rAddress := EcdsaAddressFromPrivateKey(ecdsaPrivateKey)
-	res := SignatureResponse{
+	rAddress := milestone4.EcdsaAddressFromPrivateKey(ecdsaPrivateKey)
+	res := milestone4.SignatureResponse{
 		Address: rAddress.Hex(),
 		Msg:     fmt.Sprintf("message: %s ", message),
 		Sig:     hexutil.Encode(signatureBytes),
@@ -42,7 +43,7 @@ func WalletSigRequest() {
 
 func WalletSigVerify(address string, message string, signature string) bool {
 	// 消息通常会被哈希化后再被签名
-	hashed := accounts.TextHash(UnsafeBytes(message))
+	hashed := accounts.TextHash(milestone4.UnsafeBytes(message))
 	sig := common.FromHex(signature)
 	if len(sig) != crypto.SignatureLength { // 因为签名应该是65字节长: r (32 bytes) + s (32 bytes) + v (1 byte)
 		//log.Error().Msg("Incorrect signature length")

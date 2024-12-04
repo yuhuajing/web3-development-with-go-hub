@@ -1,4 +1,4 @@
-package milestone4
+package sign
 
 import (
 	"encoding/json"
@@ -8,6 +8,7 @@ import (
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"log"
 	"main/config"
+	"main/milestone4"
 	"time"
 )
 
@@ -15,8 +16,8 @@ func StakeSigRequest() {
 	var nftIds []uint32
 	nftIds = append(nftIds, 1318)
 	ts := time.Now().Unix()
-	uuid := GeneUUID()
-	signId := GeneUUID()
+	uuid := milestone4.GeneUUID()
+	signId := milestone4.GeneUUID()
 	chainId := 13473
 	nft := "0x0000000000000000000000000000000000000000"
 	sender := "0x0000000000000000000000000000000000000000"
@@ -48,8 +49,8 @@ func doStakeSig(nftId []uint32, chainId, timestamp, uuid, signId uint64, nft, se
 	}
 	signatureBytes[64] += 27
 
-	rAddress := EcdsaAddressFromPrivateKey(ecdsaPrivateKey)
-	res := SignatureResponse{
+	rAddress := milestone4.EcdsaAddressFromPrivateKey(ecdsaPrivateKey)
+	res := milestone4.SignatureResponse{
 		Address: rAddress.Hex(),
 		Msg:     fmt.Sprintf("nftIds: %v  chainID :%d timestamp: %d uuid: %d signid: %d nft: %s sender: %s contract: %s", nftId, chainId, timestamp, uuid, signId, nft, sender, contract),
 		Sig:     hexutil.Encode(signatureBytes),

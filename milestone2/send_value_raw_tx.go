@@ -20,11 +20,11 @@ import (
 //	DynamicTransferEth("0x604427A2d0805F7037d2747c2B4D882116616cb9", "", 10, 21000)
 //}
 
-func DynamicTransferEth(to, data string, value, gasLimit uint64) {
+func DynamicTransferEth(to, data, key string, value, gasLimit uint64) {
 	var ctx = context.Background()
 	// Import the from address
 	//0x96216849c49358B10257cb55b28eA603c874b05E
-	key := "fad9c8855b740a0b7ed4c221dbad0f33a83a49cad6b3fe8d5817ac83d38b6a19"
+	//	key := "fad9c8855b740a0b7ed4c221dbad0f33a83a49cad6b3fe8d5817ac83d38b6a19"
 	// Decode the provided private key.
 	if ok := strings.HasPrefix(key, "0x"); ok {
 		key, _ = strings.CutPrefix(key, "0x")

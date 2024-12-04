@@ -1,4 +1,4 @@
-package milestone4
+package sign
 
 import (
 	"crypto/ecdsa"
@@ -7,11 +7,15 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"log"
+	"main/milestone4"
 	"strings"
 )
 
 // signMessage signs a message using the provided private key.
 func SignMessage(message, privKey string) (string, string) {
+	if strings.HasPrefix(privKey, "0x") {
+		privKey = strings.Trim(privKey, "0x")
+	}
 	// Convert the private key from hex to ECDSA format
 	ecdsaPrivateKey, err := crypto.HexToECDSA(privKey)
 	if err != nil {
@@ -20,7 +24,7 @@ func SignMessage(message, privKey string) (string, string) {
 
 	// Construct the message prefix
 	prefix := []byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(message)))
-	messageBytes := UnsafeBytes(message)
+	messageBytes := milestone4.UnsafeBytes(message)
 
 	// Hash the prefix and message using Keccak-256
 	hash := crypto.Keccak256Hash(prefix, messageBytes)
@@ -43,7 +47,7 @@ func SignMessage(message, privKey string) (string, string) {
 	rAddress := crypto.PubkeyToAddress(*pub)
 
 	// Construct the signature response
-	res := SignatureResponse{
+	res := milestone4.SignatureResponse{
 		Address: rAddress.String(),
 		Msg:     message,
 		Sig:     hexutil.Encode(sig),
