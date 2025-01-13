@@ -24,13 +24,10 @@ import (
 )
 
 var (
-	nft              common.Address
-	feeRecipient     common.Address
-	minterIfNotPayer common.Address
-	quantity         int64
-	client           *ethclient.Client
-	contracts        common.Address
-	rpc              map[string]string
+	quantity  int64
+	client    *ethclient.Client
+	contracts common.Address
+	rpc       map[string]string
 	//gaslimit         int64
 	chain     string
 	pks       []string
@@ -39,15 +36,17 @@ var (
 	instance  *Brc20
 	groupSize int
 	gasFee    float64
+	logsChan  = make(chan types.Log, 0)
+	target    map[string]bool
 )
 
 func init() {
 	rpc = make(map[string]string)
 	rpc["Eth"] = "https://eth.drpc.org"
 	rpc["Sepolia"] = "https://sepolia.drpc.org"
-	rpc["Bsc"] = "https://bsc.drpc.org"
+	rpc["Bsc"] = "wss://base-rpc.publicnode.com"
 	rpc["Arbitrum"] = "https://arbitrum.drpc.org"
-	rpc["Base"] = "https://mainnet.base.org"
+	rpc["Base"] = "wss://base-rpc.publicnode.com"
 	rpc["Polygon"] = "https://polygon.drpc.org"
 	rpc["Op"] = "https://optimism.drpc.org"
 	rpc["Linea"] = "https://linea.drpc.org"
@@ -57,6 +56,7 @@ func init() {
 }
 
 func main() {
+	target = make(map[string]bool)
 	//选择连
 	chain = "Base"
 	// NFT mint的 gas花销
@@ -64,13 +64,9 @@ func main() {
 	// 合约地址
 	contracts = common.HexToAddress("0x00005EA00Ac477B1030CE78506496e8C2dE24bf5")
 	//传递的参数
-	// mintPublic(address nftContract,address feeRecipient,address minterIfNotPayer,uint256 quantity)
-	nft = common.HexToAddress("0xD2520E1cB572CCeBf42aEdbB9123d3e08AC6B633")
-	feeRecipient = common.HexToAddress("0x0000a26b00c1F0DF003000390027140000fAa719")
-	minterIfNotPayer = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
 	quantity = 1
 	groupSize = 10
-
 	client = ConnBlockchain(rpc[chain])
 	chainId, err = client.ChainID(context.Background())
 	if err != nil {
@@ -83,13 +79,49 @@ func main() {
 		log.Printf("构建交易Instance失败,err= %v", err)
 		return
 	}
-	price, err := CheckTimeAndPrice(nft, quantity)
-	if err != nil {
-		fmt.Println("err= %v", err)
-		return
-	}
+	SubStakingEvent()
+	//price, err := CheckTimeAndPrice(nft, quantity)
+	//log.Print(price.Uint64())
+	//if err != nil {
+	//	fmt.Println("err= %v", err)
+	//	return
+	//}
+	//
+	//MintPublic(price)
+}
 
-	MintPublic(price)
+func SubStakingEvent() {
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{contracts},
+		Topics:    [][]common.Hash{{common.HexToHash("0xe90cf9cc0a552cf52ea6ff74ece0f1c8ae8cc9ad630d3181f55ac43ca076b7d6")}},
+	}
+	subevents, err := client.SubscribeFilterLogs(context.Background(), query, logsChan)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Subscribe Event error: %v", err))
+		log.Fatal(err)
+	}
+	for {
+		select {
+		case err := <-subevents.Err():
+			fmt.Println(fmt.Errorf("Rpc 链接失败，请重启 error: %v", err))
+			SubStakingEvent()
+		case lplog := <-logsChan:
+			SeadropFilterer, _ := NewBrc20Filterer(lplog.Address, client)
+			data, _ := SeadropFilterer.ParseSeaDropMint(lplog)
+			if !target[data.NftContract.Hex()] {
+				target[data.NftContract.Hex()] = true
+				if data.DropStageIndex.Int64() == 0 { //&& data.UnitMintPrice.String() == "0" {
+					price, err := CheckTimeAndPrice(data.NftContract, quantity)
+					log.Print(price.Uint64())
+					if err != nil {
+						fmt.Println("err= %v", err)
+						return
+					}
+					MintPublic(data.NftContract, data.FeeRecipient, data.Payer, price) //big.NewInt(0))
+				}
+			}
+		}
+	}
 }
 
 func CheckTimeAndPrice(nft common.Address, quantity int64) (*big.Int, error) {
@@ -108,7 +140,7 @@ func CheckTimeAndPrice(nft common.Address, quantity int64) (*big.Int, error) {
 	return config.MintPrice, nil
 }
 
-func MintPublic(price *big.Int) {
+func MintPublic(nft, fee, payer common.Address, price *big.Int) {
 	pks = make([]string, 0)
 	file, err := os.Open("prikey.csv")
 	if err != nil {
@@ -149,8 +181,8 @@ func MintPublic(price *big.Int) {
 		wg.Add(1)
 		go func(group []string) {
 			defer wg.Done()
-			for _, pk := range pks {
-				err := mintpublic(nft, feeRecipient, minterIfNotPayer, quantity, price, pk)
+			for _, pk := range group {
+				err := mintpublic(nft, fee, payer, quantity, price, pk)
 				if err != nil {
 					fmt.Printf("交易失败-私钥= %s, err: %v \n", pk[:6], err)
 					continue
@@ -187,15 +219,17 @@ func mintpublic(nft, fee, payer common.Address, qty int64, price *big.Int, priva
 	var pp = new(big.Int)
 	pp.Mul(price, big.NewInt(quantity))
 	opts.Value = pp
+
 	suggestPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("Write获取GasPrice失败,err= %v", err)
 	}
 	opts.GasPrice = suggestPrice
 
-	gasfee := gasFee * math.Pow(10, 18)
-	pp.Div(big.NewInt(int64(gasfee)), suggestPrice)
-	opts.GasLimit = pp.Uint64()
+	var limit = new(big.Int)
+	gfee := gasFee * math.Pow(10, 18)
+	limit.Div(big.NewInt(int64(gfee)), suggestPrice)
+	opts.GasLimit = limit.Uint64()
 
 	trans, err := instance.MintPublic(opts, nft, fee, payer, big.NewInt(qty))
 
@@ -210,8 +244,8 @@ func mintpublic(nft, fee, payer common.Address, qty int64, price *big.Int, priva
 func ConnBlockchain(str string) *ethclient.Client {
 	client, err := ethclient.Dial(str)
 	if err != nil {
-		fmt.Printf("Conn chain err = %v", err)
-		log.Fatalf("Eth connect error:%s\n", err)
+		//fmt.Printf("Conn chain err = %v", err)
+		log.Fatalf("Conn connect error:%s\n", err)
 		//log.Fatal(err)
 	}
 	return client
