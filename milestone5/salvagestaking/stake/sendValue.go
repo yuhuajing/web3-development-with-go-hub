@@ -11,16 +11,15 @@ import (
 	"math/big"
 )
 
-func SendValue(chain string, toAddr common.Address, funder common.Address, ecdsaPrivateKey *ecdsa.PrivateKey) (error, string) {
+func ClaimNativeTokens(toAddr common.Address, funder common.Address, ecdsaPrivateKey *ecdsa.PrivateKey, limit int) (error, string) {
 	var ctx = context.Background()
 	nonce, err := config.Client.PendingNonceAt(context.Background(), funder)
 	if err != nil {
-		return fmt.Errorf("get funder nonce error = %v", err), ""
+		return fmt.Errorf("获取Funder信息错误： %v", err), ""
 	}
 
-	totallimit := config.UnlockGasLimit + config.NFTTransGasLimit
 	v := big.NewInt(0)
-	v.Mul(big.NewInt(int64(totallimit)), config.GasPrice)
+	v.Mul(big.NewInt(int64(limit)), config.GasPrice)
 
 	balance, _ := config.Client.BalanceAt(ctx, toAddr, nil)
 
